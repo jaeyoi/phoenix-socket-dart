@@ -188,13 +188,14 @@ class Push {
   /// Schedule a timeout to be triggered if no reply occurs
   /// within the expected time frame.
   void startTimeout() {
+    cancelTimeout();
     if (!_awaitingReply) {
       _channel.onPushReply(replyEvent)
         ..then<void>(_receiveResponse).catchError(_receiveResponse);
       _awaitingReply = true;
     }
 
-    _timeoutTimer ??= Timer(timeout!, () {
+    _timeoutTimer = Timer(timeout!, () {
       _timeoutTimer = null;
       _logger.warning('Push $ref timed out');
       _channel.trigger(Message.timeoutFor(ref));

@@ -96,36 +96,37 @@ Map<String, dynamic>? _syncState(
   LeaveHandler onLeave,
 ) {
   final state = _clone(currentState)!;
-  final joins = {};
-  final leaves = {};
+  final joins = <String, dynamic>{};
+  final leaves = <String, dynamic>{};
 
   _map(state, (key, presence) {
-    if (newState.containsKey(key)) {
+    if (!newState.containsKey(key)) {
       leaves[key] = presence;
     }
   });
   _map(newState, (key, newPresence) {
     if (state.containsKey(key)) {
       final currentPresence = state[key];
-      final newRefs = (newPresence.metas as List).map((m) => m.phx_ref).toSet();
+      final newRefs =
+          (newPresence['metas'] as List).map((m) => m['phx_ref']).toSet();
       final curRefs =
-          (currentPresence.metas as List).map((m) => m.phx_ref).toSet();
+          (currentPresence['metas'] as List).map((m) => m['phx_ref']).toSet();
 
-      final joinedMetas = (newPresence.metas as List)
-          .where((m) => !curRefs.contains(m.phx_ref))
+      final joinedMetas = (newPresence['metas'] as List)
+          .where((m) => !curRefs.contains(m['phx_ref']))
           .toList();
 
-      final leftMetas = (currentPresence.metas as List)
-          .where((m) => !newRefs.contains(m.phx_ref))
+      final leftMetas = (currentPresence['metas'] as List)
+          .where((m) => !newRefs.contains(m['phx_ref']))
           .toList();
 
       if (joinedMetas.isNotEmpty) {
         joins[key] = newPresence;
-        joins[key].metas = joinedMetas;
+        joins[key]['metas'] = joinedMetas;
       }
       if (leftMetas.isNotEmpty) {
         leaves[key] = _clone(currentPresence);
-        leaves[key].metas = leftMetas;
+        leaves[key]['metas'] = leftMetas;
       }
     } else {
       joins[key] = newPresence;
@@ -146,27 +147,32 @@ Map<String, dynamic>? _syncDiff(
   final Map<String, dynamic> leaves = diff['leaves'];
 
   _map(joins, (key, newPresence) {
-    final currentPresence = state![key];
-    state[key] = newPresence;
-    if (currentPresence) {
-      final joinedRefs =
-          (state[key].metas as List).map((m) => m.phx_ref).toSet();
-      final curMetas = (currentPresence.metas as List)
-          .where((m) => !joinedRefs.contains(m.phx_ref));
-      (state[key].metas as List).insertAll(0, curMetas);
+    if (state != null) {
+      final currentPresence = state[key];
+      state[key] = newPresence;
+      if (currentPresence != null) {
+        final joinedRefs =
+            (state[key]['metas'] as List).map((m) => m['phx_ref']).toSet();
+        final curMetas = (currentPresence['metas'] as List)
+            .where((m) => !joinedRefs.contains(m['phx_ref']));
+        (state[key]['metas'] as List).insertAll(0, curMetas);
+      }
+      onJoin(key, currentPresence, newPresence);
     }
-    onJoin(key, currentPresence, newPresence);
   });
   _map(leaves, (key, leftPresence) {
-    final currentPresence = state![key];
-    if (!currentPresence) return;
-    final refsToRemove =
-        (leftPresence.metas as List).map((m) => m.phx_ref).toSet();
-    currentPresence.metas = (currentPresence.metas as List)
-        .where((p) => !refsToRemove.contains(p.phx_ref));
-    onLeave(key, currentPresence, leftPresence);
-    if ((currentPresence.metas as List).isEmpty) {
-      state.remove(key);
+    if (state != null) {
+      final currentPresence = state[key];
+      if (currentPresence == null) return;
+      final refsToRemove =
+          (leftPresence['metas'] as List).map((m) => m['phx_ref']).toSet();
+      currentPresence['metas'] = (currentPresence['metas'] as List)
+          .where((p) => !refsToRemove.contains(p['phx_ref']))
+          .toList();
+      onLeave(key, currentPresence, leftPresence);
+      if (currentPresence['metas'].isEmpty) {
+        state.remove(key);
+      }
     }
   });
   return state;
