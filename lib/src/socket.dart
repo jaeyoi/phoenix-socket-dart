@@ -49,7 +49,6 @@ class PhoenixSocket {
   PhoenixSocket(
     /// The URL of the Phoenix server.
     String endpoint, {
-
     /// The options used when initiating and maintaining the
     /// websocket connection.
     PhoenixSocketOptions? socketOptions,
@@ -86,7 +85,7 @@ class PhoenixSocket {
   final StreamController<String> _receiveStreamController =
       StreamController.broadcast();
   final String _endpoint;
-  final StreamController<Message> _topicMessages = StreamController();
+  final BehaviorSubject<Message> _topicMessages = BehaviorSubject();
 
   late Uri _mountPoint;
 
@@ -98,8 +97,6 @@ class PhoenixSocket {
   SocketState _socketState;
 
   WebSocketChannel? _ws;
-
-  _StreamRouter<Message>? _router;
 
   /// Stream of [PhoenixSocketOpenEvent] being produced whenever
   /// the connection is open.
@@ -140,13 +137,15 @@ class PhoenixSocket {
 
   late PhoenixSocketOptions _options;
 
+  ///
+  set options(PhoenixSocketOptions newOptions) {
+    _options = newOptions;
+  }
+
   /// Default duration for a connection timeout.
   Duration get defaultTimeout => _options.timeout;
 
   bool _disposed = false;
-
-  _StreamRouter<Message> get _streamRouter =>
-      _router ??= _StreamRouter<Message>(_topicMessages.stream);
 
   /// A stream yielding [Message] instances for a given topic.
   ///
@@ -154,7 +153,8 @@ class PhoenixSocket {
   /// eventually yield messages when the channel is open and it receives
   /// messages.
   Stream<Message> streamForTopic(String topic) => _topicStreams.putIfAbsent(
-      topic, () => _streamRouter.route((event) => event.topic == topic));
+      topic,
+      () => _topicMessages.stream.where((event) => event.topic == topic));
 
   /// The string URL of the remote Phoenix server.
   String get endpoint => _endpoint;
@@ -486,7 +486,9 @@ class PhoenixSocket {
 
   void _onSocketData(message) {
     if (message is String) {
-      if (!_receiveStreamController.isClosed) {
+      _logger.finer(message);
+      if (_receiveStreamController is StreamController &&
+          !_receiveStreamController.isClosed) {
         _receiveStreamController.add(message);
       }
     } else {
@@ -584,5 +586,16 @@ class PhoenixSocket {
     // Some random number to prevent many clients from retrying to
     // connect at exactly the same time.
     return duration + Duration(milliseconds: _random.nextInt(1000));
+  }
+
+  // ignore: public_member_api_docs
+  void leaveOpenTopic(String? ref) {
+    final dupChannel = channels[ref];
+    if (dupChannel != null &&
+        (dupChannel.state == PhoenixChannelState.joined ||
+            dupChannel.state == PhoenixChannelState.joining)) {
+      _logger.info('leaving duplicate topic ${dupChannel.topic}');
+      dupChannel.leave();
+    }
   }
 }

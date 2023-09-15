@@ -309,7 +309,7 @@ class PhoenixChannel {
       payload: () => parameters,
       timeout: providedTimeout ?? _timeout,
     );
-    _bindJoinPush(push);
+    // _bindJoinPush(push);
     return push;
   }
 
@@ -359,6 +359,7 @@ class PhoenixChannel {
 
   void _attemptJoin() {
     if (_state != PhoenixChannelState.leaving) {
+      socket.leaveOpenTopic(_reference);
       _state = PhoenixChannelState.joining;
       _bindJoinPush(_joinPush);
       unawaited(_joinPush.resend(_timeout));
