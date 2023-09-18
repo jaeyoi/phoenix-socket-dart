@@ -487,8 +487,7 @@ class PhoenixSocket {
   void _onSocketData(message) {
     if (message is String) {
       _logger.finer(message);
-      if (_receiveStreamController is StreamController &&
-          !_receiveStreamController.isClosed) {
+      if (!_receiveStreamController.isClosed) {
         _receiveStreamController.add(message);
       }
     } else {

@@ -10,17 +10,17 @@ import 'message.dart';
 
 typedef JoinHandler = void Function(
   String key,
-  dynamic current,
-  dynamic joined,
+  Presence? current,
+  Presence joined,
 );
 typedef LeaveHandler = void Function(
   String key,
-  dynamic current,
-  dynamic left,
+  Presence current,
+  Presence left,
 );
 
 // No-op methods, default values for callbacks.
-void _noopWithThreeArgs(String a, dynamic b, dynamic c) {}
+void _noopWithThreeArgs(String a, Presence? b, Presence c) {}
 void _noopWithNoArg() {}
 
 /// A Phoenix Presence client to interact with a backend
@@ -270,12 +270,16 @@ class PhoenixPresence {
 /// a specific [key] as a list of metadatas events [metas].
 class Presence {
   Presence.fromJson(this.key, Map<String, dynamic> events)
-      : metas = List<Map<String, dynamic>>.from(events[key]['metas'])
+      : data = {...events[key]},
+        metas = List<Map<String, dynamic>>.from(events[key]['metas'])
             .map((meta) => PhoenixPresenceMeta.fromJson(meta))
             .toList();
 
   /// Identify the presence, typically a userId.
   final String key;
+
+  /// The raw data
+  final Map<String, dynamic> data;
 
   /// A list of all events metadatas for this Presence [key].
   List<PhoenixPresenceMeta> metas;
